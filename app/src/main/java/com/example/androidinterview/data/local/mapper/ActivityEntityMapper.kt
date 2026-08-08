@@ -1,36 +1,34 @@
-package com.example.androidinterview.data.mapper
+package com.example.androidinterview.data.local.mapper
 
+import com.example.androidinterview.data.local.entity.ActivityEntity
 import com.example.androidinterview.data.remote.dto.ActivityItemDto
-import com.example.androidinterview.data.remote.dto.MerchantResponseDto
 import com.example.androidinterview.domain.model.ActivityItem
 import com.example.androidinterview.domain.model.ActivityStatus
 import com.example.androidinterview.domain.model.ActivityType
 import com.example.androidinterview.domain.model.Currency
-import com.example.androidinterview.domain.model.Merchant
 import com.example.androidinterview.util.toFriendlyStatus
 import com.example.androidinterview.util.toFriendlyType
 
-fun MerchantResponseDto.toDomain(): Merchant {
-    return Merchant(
-        availableBalance = availableBalance,
-        pendingBalance = pendingBalance,
-        currency = currency.toCurrency(),
-        activityItem = activity.map { it.toDomain() }
-    )
-}
-
-private fun ActivityItemDto.toDomain(): ActivityItem {
+fun ActivityEntity.toDomain(): ActivityItem {
     return ActivityItem(
         id = id,
         type = ActivityType.valueOf(type.uppercase()).toFriendlyType(),
         amount = amount,
-        currency = currency.toCurrency(),
+        currency = Currency.valueOf(currency.uppercase()),
         date = date,
         description = description,
         status = ActivityStatus.valueOf(status.uppercase()).toFriendlyStatus()
     )
 }
 
-private fun String.toCurrency(): Currency {
-    return Currency.valueOf(this.uppercase())
+fun ActivityItemDto.toEntity(): ActivityEntity {
+    return ActivityEntity(
+        id = id,
+        type = type,
+        amount = amount,
+        currency = currency,
+        date = date,
+        description = description,
+        status = status
+    )
 }
