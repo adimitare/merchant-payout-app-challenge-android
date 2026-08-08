@@ -4,5 +4,5 @@ data class Merchant(
     val availableBalance: Int,
     val pendingBalance: Int,
     val currency: Currency,
-    val activity: List<Activity>
+    val activityItem: List<ActivityItem>
 )

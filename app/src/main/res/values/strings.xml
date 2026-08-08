@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">AndroidInterview</string>
+    <string name="business_account">Business Account</string>
+    <string name="account_balance">Account Balance</string>
+    <string name="recent_activity">Recent Activity</string>
+    <string name="show_more">Show More</string>
+    <string name="available_text">Available</string>
+    <string name="pending_text">Pending</string>
+    <string name="transactions_title">Transactions</string>
+    <string name="close_title">Close</string>
+    <string name="transaction_date_today">Today</string>
+    <string name="transaction_date_yesterday">Yesterday</string>
+    <string name="transaction_date_pattern">dd MMM yyyy</string>
 </resources>

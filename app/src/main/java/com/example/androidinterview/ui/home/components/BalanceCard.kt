@@ -10,27 +10,31 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.androidinterview.R
+import com.example.androidinterview.domain.model.Currency
+import com.example.androidinterview.util.formatMoney
 
 @Composable
 fun BalanceCard(
     available: Int,
     pending: Int,
-    currency: String
+    currency: Currency
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         BalanceItem(
-            title = "Available",
-            amount = available
+            title = stringResource(R.string.available_text),
+            amount = available,
+            currency = currency
         )
-
-
         BalanceItem(
-            title = "Pending",
-            amount = pending
+            title = stringResource(R.string.pending_text),
+            amount = pending,
+            currency = currency
         )
     }
 }
@@ -38,7 +42,8 @@ fun BalanceCard(
 @Composable
 private fun BalanceItem(
     title: String,
-    amount: Int
+    amount: Int,
+    currency: Currency
 ) {
     Column {
         Text(
@@ -50,7 +55,7 @@ private fun BalanceItem(
             modifier = Modifier.height(8.dp)
         )
         Text(
-            text = "£%,.2f".format(amount / 100.0),
+            text = formatMoney(amount, currency),
             style = MaterialTheme.typography.headlineLarge
         )
     }

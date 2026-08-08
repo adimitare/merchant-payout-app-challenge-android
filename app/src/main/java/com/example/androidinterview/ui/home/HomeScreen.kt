@@ -6,49 +6,46 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.androidinterview.R
 import com.example.androidinterview.domain.model.Merchant
 import com.example.androidinterview.ui.common.ErrorContent
 import com.example.androidinterview.ui.common.LoadingContent
 import com.example.androidinterview.ui.home.components.BalanceCard
 import com.example.androidinterview.ui.home.components.RecentActivityItem
 
-
 @Composable
 fun HomeScreen(
+    onOpenTransactions: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-
     val state by viewModel.uiState.collectAsState()
-
     when (val current = state) {
-
         HomeUiState.Loading -> {
             LoadingContent()
         }
-
         is HomeUiState.Error -> {
             ErrorContent(
                 message = current.message,
                 retry = viewModel::loadMerchant
             )
         }
-
         is HomeUiState.Success -> {
             HomeContent(
-                merchant = current.merchant
+                merchant = current.merchant,
+                onOpenTransactions = onOpenTransactions
             )
         }
     }
 }
 
-
 @Composable
 private fun HomeContent(
-    merchant: Merchant
+    merchant: Merchant,
+    onOpenTransactions: () -> Unit,
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -60,75 +57,55 @@ private fun HomeContent(
                 vertical = 24.dp
             )
     ) {
-
-
         Text(
-            text = "Business Account",
+            text = stringResource(R.string.business_account),
             style = MaterialTheme.typography.headlineLarge
         )
-
-
         Spacer(
             modifier = Modifier.height(56.dp)
         )
-
-
         Text(
-            text = "Account Balance",
+            text = stringResource(R.string.account_balance),
             style = MaterialTheme.typography.headlineSmall
         )
-
-
         Spacer(
             modifier = Modifier.height(32.dp)
         )
-
         BalanceCard(
             available = merchant.availableBalance,
             pending = merchant.pendingBalance,
-            currency = merchant.currency.name
+            currency = merchant.currency
         )
-
-
         Spacer(
             modifier = Modifier.height(56.dp)
         )
-
-
         Text(
-            text = "Recent Activity",
+            text = stringResource(R.string.recent_activity),
             style = MaterialTheme.typography.headlineSmall
         )
-
-
         Spacer(
             modifier = Modifier.height(24.dp)
         )
-
-
-        merchant.activity.forEach { activity ->
-
+        merchant.activityItem.forEach { activity ->
             RecentActivityItem(
-                activity = activity
+                activityItem = activity
             )
-
             HorizontalDivider()
-
         }
         Spacer(
             modifier = Modifier.height(32.dp)
         )
         Button(
-            onClick = {},
+            onClick = onOpenTransactions,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp),
+                .height(48.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             )
         ) {
             Text(
-                text = "Show More",
+                text = stringResource(R.string.show_more),
                 style = MaterialTheme.typography.titleMedium
             )
         }

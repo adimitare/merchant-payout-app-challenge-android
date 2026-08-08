@@ -14,12 +14,12 @@ enum class ActivityStatus {
     FAILED
 }
 
-data class Activity(
+data class ActivityItem(
     val id: String,
-    val type: ActivityType,
+    val type: String,
     val amount: Int,
     val currency: Currency,
     val date: String,
     val description: String,
-    val status: ActivityStatus
+    val status: String
 )
