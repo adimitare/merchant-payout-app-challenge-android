@@ -11,4 +11,18 @@
     <string name="transaction_date_today">Today</string>
     <string name="transaction_date_yesterday">Yesterday</string>
     <string name="transaction_date_pattern">dd MMM yyyy</string>
+    <string name="amount_text_field">Amount</string>
+    <string name="currency_text_field">Currency</string>
+    <string name="iban_text_field">IBAN</string>
+    <string name="enter_an_iban">Enter an IBAN</string>
+    <string name="enter_a_valid_iban">Enter a valid IBAN</string>
+    <string name="confirm_text_button_payout_form">Confirm</string>
+    <string name="enter_the_destination_bank_account_iban">Enter the destination bank account IBAN</string>
+    <string name="send_payout">Send Payout</string>
+    <string name="confirm_payout">Confirm Payout</string>
+    <string name="confirm_text_button">Confirm</string>
+    <string name="cancel_text_button">Cancel</string>
+    <string name="amount_confirm_payout_dialog">Amount: </string>
+    <string name="currency_confirm_payout_dialog">Currency: </string>
+    <string name="iban_confirm_payout_dialog">IBAN: </string>
 </resources>

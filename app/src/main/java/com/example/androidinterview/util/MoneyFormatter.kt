@@ -14,3 +14,10 @@ fun formatMoney(
         amount / 100.0
     )
 }
+
+fun formatMoney(
+    amount: String,
+    currency: Currency
+): String {
+    return formatMoney(amount.toInt(), currency)
+}

@@ -12,8 +12,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.example.androidinterview.ui.home.HomeScreen
+import com.example.androidinterview.ui.payout.PayoutScreen
 import com.example.androidinterview.ui.transactions.TransactionListScreen
-import com.example.androidinterview.ui.payouts.PayoutsScreen
 
 @Composable
 fun AppNavigation() {
@@ -58,11 +58,7 @@ fun AppNavigation() {
                     )
                 }
                 entry<AppDestination.Payouts> {
-                    PayoutsScreen(
-                        onShowTransactions = {
-                            backStack.add(AppDestination.Transactions)
-                        }
-                    )
+                    PayoutScreen()
                 }
                 entry<AppDestination.Transactions> {
                     TransactionListScreen(
