@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class CreatePayoutRequestDto(
     val amount: Int,
     val currency: String,
-    val iban: String
+    val iban: String,
+    val deviceId: String
 )
