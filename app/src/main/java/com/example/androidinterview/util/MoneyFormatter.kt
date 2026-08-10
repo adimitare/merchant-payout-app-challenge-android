@@ -1,6 +1,8 @@
 package com.example.androidinterview.util
 
 import com.example.androidinterview.domain.model.Currency
+import java.text.NumberFormat
+import java.util.Locale
 
 fun formatMoney(
     amount: Int,
@@ -19,5 +21,8 @@ fun formatMoney(
     amount: String,
     currency: Currency
 ): String {
-    return formatMoney(amount.toInt(), currency)
+    val value = amount.toBigDecimalOrNull() ?: return amount
+    val formatter = NumberFormat.getCurrencyInstance(Locale.UK)
+    formatter.currency = java.util.Currency.getInstance(currency.name)
+    return formatter.format(value)
 }

@@ -2,7 +2,10 @@ package com.example.androidinterview.ui.payout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.androidinterview.R
 import com.example.androidinterview.domain.model.Currency
+import com.example.androidinterview.domain.model.PayoutException
+import com.example.androidinterview.domain.usecase.SubmitPayoutUseCase
 import com.example.androidinterview.domain.usecase.ValidateIbanUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -13,8 +16,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class PayoutViewModel @Inject constructor(
-    // private val repository: PayoutRepository
-    private val validateIbanUseCase: ValidateIbanUseCase
+    private val validateIbanUseCase: ValidateIbanUseCase,
+    private val submitPayoutUseCase: SubmitPayoutUseCase
 ) : ViewModel() {
 
     private val _uiState =
@@ -30,11 +33,13 @@ class PayoutViewModel @Inject constructor(
             ?: return
         if (
             value.isEmpty() ||
-            value.matches(Regex("""\d+(\.\d{0,2})?"""))
+            value.matches(amountRegex)
         ) {
             _uiState.value = current.copy(
-                amount = value,
-                amountError = null
+                data = current.data.copy(
+                    amount = value,
+                    amountError = null
+                )
             )
         }
     }
@@ -44,7 +49,9 @@ class PayoutViewModel @Inject constructor(
             ?: return
 
         _uiState.value = current.copy(
-            currency = currency
+            data = current.data.copy(
+                currency = currency
+            )
         )
     }
 
@@ -53,8 +60,10 @@ class PayoutViewModel @Inject constructor(
             ?: return
 
         _uiState.value = current.copy(
-            iban = value,
-            ibanError = null
+            data = current.data.copy(
+                iban = value,
+                ibanError = null
+            )
         )
     }
 
@@ -62,21 +71,22 @@ class PayoutViewModel @Inject constructor(
         val current = _uiState.value as? PayoutUiState.Form
             ?: return
 
-        val amountError = validateAmount(current.amount)
-        val ibanError = validateIbanUseCase(current.iban)
+        val data = current.data
+        val amountError = validateAmount(data.amount)
+        val ibanError = validateIbanUseCase(data.iban)
 
         if (amountError != null || ibanError != null) {
             _uiState.value = current.copy(
-                amountError = amountError,
-                ibanError =  ibanError
+                data = data.copy(
+                    amountError = amountError,
+                    ibanError = ibanError
+                )
             )
             return
         }
 
         _uiState.value = PayoutUiState.Confirming(
-            amount = current.amount,
-            currency = current.currency,
-            iban = current.iban
+            data = data
         )
     }
 
@@ -84,34 +94,10 @@ class PayoutViewModel @Inject constructor(
         val current = _uiState.value as? PayoutUiState.Confirming
             ?: return
 
+        val data = current.data
         _uiState.value = PayoutUiState.Form(
-            amount = current.amount,
-            currency = current.currency,
-            iban = current.iban
+            data = data
         )
-    }
-
-    fun confirmPayout() {
-        val current = _uiState.value as? PayoutUiState.Confirming
-            ?: return
-
-        viewModelScope.launch {
-            _uiState.value = PayoutUiState.Submitting
-
-            /*
-             * Replace this with the repository call when
-             * the payout API is wired.
-             *
-             * repository.createPayout(...)
-             */
-
-            // Temporary implementation for the UI flow.
-            // Remove once API integration is connected.
-            _uiState.value = PayoutUiState.Success(
-                amount = current.amount,
-                currency = current.currency
-            )
-        }
     }
 
     fun createAnotherPayout() {
@@ -119,25 +105,88 @@ class PayoutViewModel @Inject constructor(
     }
 
     fun retry() {
-        _uiState.value = PayoutUiState.Form()
+        val current = _uiState.value as? PayoutUiState.Error
+            ?: return
+
+        _uiState.value = PayoutUiState.Confirming(
+            data = current.data
+        )
+    }
+
+    fun submitPayout() {
+        val current = _uiState.value as? PayoutUiState.Confirming
+            ?: return
+
+        val amount = parseAmountToMinorUnits(current.data.amount)
+            ?: run {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.Unknown,
+                    data = current.data
+                )
+                return
+            }
+        viewModelScope.launch {
+            _uiState.value = PayoutUiState.Submitting
+            runCatching {
+                submitPayoutUseCase(
+                    amount = amount,
+                    currency = current.data.currency.name,
+                    iban = current.data.iban
+                )
+            }.onSuccess { result ->
+                _uiState.value = PayoutUiState.Success(
+                    payout = result
+                )
+            }.onFailure { throwable ->
+                _uiState.value = PayoutUiState.Error(
+                    error = mapPayoutError(throwable),
+                    data = current.data
+                )
+            }
+        }
+    }
+
+    private fun mapPayoutError(throwable: Throwable): PayoutError {
+        return when (throwable) {
+            PayoutException.InsufficientFunds ->
+                PayoutError.InsufficientFunds
+
+            PayoutException.ServiceUnavailable ->
+                PayoutError.ServiceUnavailable
+
+            is PayoutException.ApiError ->
+                PayoutError.ApiError
+
+            else ->
+                PayoutError.Unknown
+        }
+    }
+
+    private fun parseAmountToMinorUnits(amount: String): Int? {
+        return runCatching {
+            amount
+                .toBigDecimalOrNull()
+                ?.movePointRight(2)
+                ?.intValueExact()
+        }.getOrNull()
     }
 
     private fun validateAmount(
         amount: String
-    ): String? {
+    ): Int? {
         val value = amount.toBigDecimalOrNull()
-
         return when {
             amount.isBlank() ->
-                "Enter an amount"
-
+                R.string.enter_an_amount
             value == null ->
-                "Enter a valid amount"
-
+                R.string.enter_a_valid_amount
             value <= java.math.BigDecimal.ZERO ->
-                "Amount must be greater than zero"
-
+                R.string.amount_must_be_greater_than_zero
             else -> null
         }
+    }
+
+    companion object {
+        private val amountRegex = Regex("""\d+(\.\d{0,2})?""")
     }
 }

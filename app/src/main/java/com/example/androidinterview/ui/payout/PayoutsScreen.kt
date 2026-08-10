@@ -7,8 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,9 +22,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight.Companion.Bold
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.example.androidinterview.R
 import com.example.androidinterview.domain.model.Currency
+import com.example.androidinterview.ui.payout.PayoutUiState.*
 import com.example.androidinterview.util.formatMoney
 
 @Composable
@@ -28,7 +40,7 @@ fun PayoutScreen(
     val state by viewModel.uiState.collectAsState()
 
     when (val current = state) {
-        is PayoutUiState.Form -> {
+        is Form -> {
             PayoutForm(
                 state = current,
                 onAmountChanged = viewModel::onAmountChanged,
@@ -38,12 +50,10 @@ fun PayoutScreen(
             )
         }
 
-        is PayoutUiState.Confirming -> {
+        is Confirming -> {
             PayoutForm(
-                state = PayoutUiState.Form(
-                    amount = current.amount,
-                    currency = current.currency,
-                    iban = current.iban
+                state = Form(
+                    data = current.data
                 ),
                 onAmountChanged = viewModel::onAmountChanged,
                 onCurrencyChanged = viewModel::onCurrencyChanged,
@@ -52,36 +62,28 @@ fun PayoutScreen(
             )
 
             ConfirmPayoutDialog(
-                amount = current.amount,
-                currency = current.currency,
-                iban = current.iban,
+                amount = current.data.amount,
+                currency = current.data.currency,
+                iban = current.data.iban,
                 onCancel = viewModel::cancelConfirmation,
-                onConfirm = viewModel::confirmPayout
+                onConfirm = viewModel::submitPayout
             )
         }
-
-        PayoutUiState.Submitting -> {
-            PayoutSubmitting()
+        is Submitting -> {
+            LoadingContent()
         }
 
-        is PayoutUiState.Success -> {
+        is Success -> {
             PayoutSuccess(
-                amount = current.amount,
-                currency = current.currency,
+                amount = current.payout.amount,
+                currency = current.payout.currency,
                 onCreateAnother = viewModel::createAnotherPayout
             )
         }
 
-        is PayoutUiState.Error -> {
+        is Error -> {
             PayoutFailure(
-                message = current.message,
-                onRetry = viewModel::retry
-            )
-        }
-
-        is PayoutUiState.InsufficientFunds -> {
-            PayoutFailure(
-                message = current.message,
+                message = payoutErrorMessage(current.error),
                 onRetry = viewModel::retry
             )
         }
@@ -90,7 +92,7 @@ fun PayoutScreen(
 
 @Composable
 private fun PayoutSuccess(
-    amount: String,
+    amount: Int,
     currency: Currency,
     onCreateAnother: () -> Unit
 ) {
@@ -103,33 +105,45 @@ private fun PayoutSuccess(
         Spacer(
             modifier = Modifier.height(160.dp)
         )
-        Text(
-            text = "✓",
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.primary
+        Icon(
+            imageVector = Icons.Filled.CheckCircle,
+            contentDescription = "Success",
+            modifier = Modifier.size(64.dp),
+            tint = colorResource(R.color.teal_200)
         )
         Spacer(
             modifier = Modifier.height(32.dp)
         )
         Text(
-            text = "Payout Completed",
-            style = MaterialTheme.typography.headlineSmall
+            text = stringResource(R.string.payout_completed),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = Bold,
         )
         Spacer(
             modifier = Modifier.height(16.dp)
         )
         Text(
-            text = "Your payout of ${formatMoney(amount.toInt(), currency)} has been processed successfully."
+            text = stringResource(
+                R.string.your_payout_of_has_been_processed_successfully,
+                formatMoney(
+                    amount = amount
+                        .toBigDecimal()
+                        .movePointLeft(2)
+                        .toPlainString(),
+                    currency = currency
+                )
+            ),
+            textAlign = TextAlign.Center
         )
-
         Spacer(
             modifier = Modifier.height(48.dp)
         )
         Button(
             onClick = onCreateAnother,
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            Text("Create Another Payout")
+            Text(stringResource(R.string.create_another_payout))
         }
     }
 }
@@ -148,44 +162,65 @@ private fun PayoutFailure(
         Spacer(
             modifier = Modifier.height(160.dp)
         )
-        Text(
-            text = "×",
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.error
+        Icon(
+            imageVector = Icons.Filled.Clear,
+            contentDescription = "Error",
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
         )
         Spacer(
             modifier = Modifier.height(32.dp)
         )
         Text(
-            text = "Unable to Process Payout",
+            text = stringResource(R.string.unable_to_process_payout),
             style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
+            fontWeight = Bold,
         )
         Spacer(
             modifier = Modifier.height(16.dp)
         )
         Text(
             text = message,
-            color = MaterialTheme.colorScheme.error
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
         )
         Spacer(
             modifier = Modifier.height(48.dp)
         )
         Button(
             onClick = onRetry,
-            modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            Text("Try Again")
+            Text(stringResource(R.string.try_again))
         }
     }
 }
 
 @Composable
-private fun PayoutSubmitting() {
+private fun LoadingContent() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun payoutErrorMessage(error: PayoutError): String {
+    return when (error) {
+        PayoutError.InsufficientFunds ->
+            stringResource(R.string.payout_insufficient_funds)
+
+        PayoutError.ServiceUnavailable ->
+            stringResource(R.string.payout_service_unavailable)
+
+        PayoutError.ApiError ->
+            stringResource(R.string.payout_unable_to_process)
+
+        PayoutError.Unknown ->
+            stringResource(R.string.payout_unknown_error)
     }
 }

@@ -57,18 +57,18 @@ fun PayoutForm(
 
         Row(Modifier.fillMaxWidth()) {
             OutlinedTextField(
-                value = state.amount,
+                value = state.data.amount,
                 onValueChange = onAmountChanged,
                 modifier = Modifier.weight(0.65f),
                 label = { Text(stringResource(R.string.amount_text_field)) },
                 singleLine = true,
-                isError = state.amountError != null,
+                isError = state.data.amountError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
                 supportingText = {
-                    state.amountError?.let {
-                        Text(text = it)
+                    state.data.amountError?.let {
+                        Text(text = stringResource(it))
                     }
                 }
             )
@@ -80,7 +80,7 @@ fun PayoutForm(
                 modifier = Modifier.weight(0.35f)
             ) {
                 OutlinedTextField(
-                    value = state.currency.name,
+                    value = state.data.currency.name,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.currency_text_field)) },
@@ -109,7 +109,7 @@ fun PayoutForm(
             modifier = Modifier.height(24.dp)
         )
         OutlinedTextField(
-            value = state.iban,
+            value = state.data.iban,
             onValueChange = onIbanChanged,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.iban_text_field)) },
@@ -118,9 +118,9 @@ fun PayoutForm(
                 capitalization = KeyboardCapitalization.Characters
             ),
             singleLine = true,
-            isError = state.ibanError != null,
+            isError = state.data.ibanError != null,
             supportingText = {
-                state.ibanError?.let {
+                state.data.ibanError?.let {
                     Text(text = stringResource(it))
                 }
             }
@@ -138,10 +138,10 @@ fun PayoutForm(
         Button(
             onClick = onConfirm,
             modifier = Modifier.fillMaxWidth(),
-            enabled = state.amount.isNotBlank() &&
-                    state.iban.isNotBlank() &&
-                    state.amountError == null &&
-                    state.ibanError == null
+            enabled = state.data.amount.isNotBlank() &&
+                    state.data.iban.isNotBlank() &&
+                    state.data.amountError == null &&
+                    state.data.ibanError == null
         ) {
             Text(stringResource(R.string.confirm_text_button_payout_form))
         }
