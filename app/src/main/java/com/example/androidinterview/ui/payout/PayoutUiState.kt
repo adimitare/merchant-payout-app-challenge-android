@@ -21,6 +21,10 @@ sealed interface PayoutUiState {
         val data: PayoutFormData
     ) : PayoutUiState
 
+    data class AwaitingBiometric(
+        val data: PayoutFormData
+    ) : PayoutUiState
+
     data object Submitting : PayoutUiState
 
     data class Success(
