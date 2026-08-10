@@ -18,26 +18,57 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.androidinterview.R
+import com.example.androidinterview.domain.biometric.BiometricAuthenticator
+import com.example.androidinterview.domain.biometric.BiometricResult
 import com.example.androidinterview.domain.model.Currency
 import com.example.androidinterview.ui.payout.PayoutUiState.*
 import com.example.androidinterview.util.formatMoney
 
 @Composable
 fun PayoutScreen(
-    viewModel: PayoutViewModel = hiltViewModel()
+    viewModel: PayoutViewModel = hiltViewModel(),
+    biometricAuthenticator: BiometricAuthenticator
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                PayoutEffect.AuthenticateBiometric -> {
+                    val currentActivity = activity
+                    if (currentActivity == null) {
+                        viewModel.onBiometricResult(
+                            BiometricResult.Unavailable
+                        )
+                    } else {
+                        biometricAuthenticator.authenticate(
+                            activity = currentActivity,
+                            onResult = viewModel::onBiometricResult,
+                            onFailed = {
+                                // Show "Fingerprint not recognized"
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     when (val current = state) {
         is Form -> {
@@ -85,6 +116,18 @@ fun PayoutScreen(
             PayoutFailure(
                 message = payoutErrorMessage(current.error),
                 onRetry = viewModel::retry
+            )
+        }
+
+        is AwaitingBiometric -> {
+            PayoutForm(
+                state = PayoutUiState.Form(
+                    data = current.data
+                ),
+                onAmountChanged = {},
+                onCurrencyChanged = {},
+                onIbanChanged = {},
+                onConfirm = {}
             )
         }
     }
@@ -222,5 +265,17 @@ private fun payoutErrorMessage(error: PayoutError): String {
 
         PayoutError.Unknown ->
             stringResource(R.string.payout_unknown_error)
+
+        PayoutError.BiometricCancelled ->
+            stringResource(R.string.biometric_authentication_cancelled)
+
+        PayoutError.BiometricNotEnrolled ->
+            stringResource(R.string.biometric_not_enrolled)
+
+        PayoutError.BiometricUnavailable ->
+            stringResource(R.string.biometric_unavailable)
+
+        is PayoutError.BiometricFailed ->
+            stringResource(R.string.biometric_authentication_failed)
     }
 }

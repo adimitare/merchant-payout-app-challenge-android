@@ -37,4 +37,11 @@
     <string name="payout_service_unavailable">The payout service is temporarily unavailable. Please try again later.</string>
     <string name="payout_insufficient_funds">Insufficient funds.</string>
     <string name="payout_unknown_error">Something went wrong. Please try again.</string>
+    <string name="biometric_authentication_cancelled">Biometric authentication was cancelled.</string>
+    <string name="biometric_not_enrolled">Biometric authentication is not set up. Please enable biometrics in Settings.</string>
+    <string name="biometric_unavailable">Biometric authentication is unavailable on this device.</string>
+    <string name="biometric_authentication_failed">Biometric authentication failed.</string>
+    <string name="biometric_authentication">Biometric Authentication</string>
+    <string name="authenticate_to_complete_the_payout">Authenticate to complete the payout</string>
+    <string name="cancel_biometric">Cancel</string>
 </resources>

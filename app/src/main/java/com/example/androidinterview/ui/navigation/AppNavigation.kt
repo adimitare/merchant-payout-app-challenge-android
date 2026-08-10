@@ -11,12 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import com.example.androidinterview.domain.biometric.BiometricAuthenticator
 import com.example.androidinterview.ui.home.HomeScreen
 import com.example.androidinterview.ui.payout.PayoutScreen
 import com.example.androidinterview.ui.transactions.TransactionListScreen
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(biometricAuthenticator: BiometricAuthenticator) {
     val backStack = rememberNavBackStack(
         AppDestination.Home
     )
@@ -64,7 +65,7 @@ fun AppNavigation() {
                     )
                 }
                 entry<AppDestination.Payouts> {
-                    PayoutScreen()
+                    PayoutScreen(biometricAuthenticator = biometricAuthenticator)
                 }
                 entry<AppDestination.Transactions> {
                     TransactionListScreen(

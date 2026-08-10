@@ -92,7 +92,6 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Biometric
-    implementation(libs.androidx.biometric)
 
     // Serialization
     implementation(libs.retrofit.serialization)
@@ -104,6 +103,9 @@ dependencies {
     // Compose icons / extras
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.material.icons.extended)
+
+    // Biometric
+    implementation(libs.androidx.biometric)
 
     // Testing
     testImplementation(libs.junit)

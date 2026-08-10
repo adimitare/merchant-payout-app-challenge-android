@@ -3,6 +3,7 @@ package com.example.androidinterview.ui.payout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidinterview.R
+import com.example.androidinterview.domain.biometric.BiometricResult
 import com.example.androidinterview.domain.model.Currency
 import com.example.androidinterview.domain.model.PayoutException
 import com.example.androidinterview.domain.usecase.SubmitPayoutUseCase
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 @HiltViewModel
 class PayoutViewModel @Inject constructor(
@@ -24,9 +27,11 @@ class PayoutViewModel @Inject constructor(
         MutableStateFlow<PayoutUiState>(
             PayoutUiState.Form()
         )
-
     val uiState: StateFlow<PayoutUiState> =
         _uiState.asStateFlow()
+
+    private val _effects = Channel<PayoutEffect>(Channel.BUFFERED)
+    val effects = _effects.receiveAsFlow()
 
     fun onAmountChanged(value: String) {
         val current = _uiState.value as? PayoutUiState.Form
@@ -125,6 +130,71 @@ class PayoutViewModel @Inject constructor(
                 )
                 return
             }
+
+        if (amount >= BIOMETRIC_THRESHOLD_MINOR_UNITS) {
+            _uiState.value = PayoutUiState.AwaitingBiometric(
+                data = current.data
+            )
+            _effects.trySend(
+                PayoutEffect.AuthenticateBiometric
+            )
+            return
+        }
+        submitPayoutToBackend(current)
+    }
+
+    fun onBiometricResult(
+        result: BiometricResult
+    ) {
+        val current = _uiState.value
+                as? PayoutUiState.AwaitingBiometric
+            ?: return
+
+        when (result) {
+            BiometricResult.Success -> {
+                val confirmingState = PayoutUiState.Confirming(
+                    data = current.data
+                )
+                submitPayoutToBackend(confirmingState)
+            }
+            BiometricResult.Cancelled -> {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.BiometricCancelled,
+                    data = current.data
+                )
+            }
+            BiometricResult.NotEnrolled -> {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.BiometricNotEnrolled,
+                    data = current.data
+                )
+            }
+            BiometricResult.Unavailable -> {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.BiometricUnavailable,
+                    data = current.data
+                )
+            }
+            is BiometricResult.Failed -> {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.BiometricFailed,
+                    data = current.data
+                )
+            }
+        }
+    }
+
+    private fun submitPayoutToBackend(
+        current: PayoutUiState.Confirming
+    ) {
+        val amount = parseAmountToMinorUnits(current.data.amount)
+            ?: run {
+                _uiState.value = PayoutUiState.Error(
+                    error = PayoutError.Unknown,
+                    data = current.data
+                )
+                return
+            }
         viewModelScope.launch {
             _uiState.value = PayoutUiState.Submitting
             runCatching {
@@ -188,5 +258,6 @@ class PayoutViewModel @Inject constructor(
 
     companion object {
         private val amountRegex = Regex("""\d+(\.\d{0,2})?""")
+        private const val BIOMETRIC_THRESHOLD_MINOR_UNITS = 100_000
     }
 }
