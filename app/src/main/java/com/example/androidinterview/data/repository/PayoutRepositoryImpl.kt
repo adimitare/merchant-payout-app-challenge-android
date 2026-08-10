@@ -6,13 +6,15 @@ import com.example.androidinterview.data.remote.dto.CreatePayoutRequestDto
 import com.example.androidinterview.data.remote.dto.ErrorResponseDto
 import com.example.androidinterview.domain.model.PayoutException
 import com.example.androidinterview.domain.model.PayoutResult
+import com.example.androidinterview.domain.repository.DeviceRepository
 import com.example.androidinterview.domain.repository.PayoutRepository
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
 import javax.inject.Inject
 
 class PayoutRepositoryImpl @Inject constructor(
-    private val api: MerchantApi
+    private val api: MerchantApi,
+    private val deviceRepository: DeviceRepository
 ) : PayoutRepository {
 
     override suspend fun createPayout(
@@ -20,12 +22,14 @@ class PayoutRepositoryImpl @Inject constructor(
         currency: String,
         iban: String
     ): PayoutResult {
+        val deviceId = deviceRepository.getDeviceId()
         return try {
             api.createPayout(
                 CreatePayoutRequestDto(
                     amount = amount,
                     currency = currency,
-                    iban = iban
+                    iban = iban,
+                    deviceId = deviceId
                 )
             ).toDomain()
         } catch (exception: HttpException) {
