@@ -35,8 +35,14 @@ fun AppNavigation() {
                         if (destination == currentDestination) {
                             return@BottomNavigationBar
                         }
-                        backStack.clear()
-                        backStack.add(destination)
+                        if (destination == AppDestination.Home) {
+                            // Returning to Home should remove the current child/root.
+                            if (backStack.size > 1) {
+                                backStack.removeLastOrNull()
+                            }
+                        } else {
+                            backStack.add(destination)
+                        }
                     }
                 )
             }
@@ -81,7 +87,6 @@ private fun BottomNavigationBar(
 ) {
     NavigationBar {
         bottomNavItems.forEach { item ->
-
             NavigationBarItem(
                 selected = currentDestination == item.destination,
                 onClick = {

@@ -2,8 +2,10 @@ package com.example.androidinterview.di
 
 import com.example.androidinterview.data.repository.ActivityRepositoryImpl
 import com.example.androidinterview.data.repository.MerchantRepositoryImpl
+import com.example.androidinterview.data.repository.PayoutRepositoryImpl
 import com.example.androidinterview.domain.repository.ActivityRepository
 import com.example.androidinterview.domain.repository.MerchantRepository
+import com.example.androidinterview.domain.repository.PayoutRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -24,4 +26,10 @@ abstract class RepositoryModule {
     abstract fun bindActivityRepository(
         implementation: ActivityRepositoryImpl
     ): ActivityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPayoutRepository(
+        implementation: PayoutRepositoryImpl
+    ): PayoutRepository
 }

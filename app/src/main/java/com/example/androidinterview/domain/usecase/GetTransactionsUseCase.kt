@@ -26,7 +26,6 @@ sealed interface TransactionDateLabel {
 class GetTransactionsUseCase @Inject constructor(
     private val repository: ActivityRepository
 ) {
-
     operator fun invoke(): Flow<PagingData<TransactionListItem>> {
         return repository
             .getActivities()

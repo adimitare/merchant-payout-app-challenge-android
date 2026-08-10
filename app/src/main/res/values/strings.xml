@@ -25,4 +25,16 @@
     <string name="amount_confirm_payout_dialog">Amount: </string>
     <string name="currency_confirm_payout_dialog">Currency: </string>
     <string name="iban_confirm_payout_dialog">IBAN: </string>
+    <string name="enter_an_amount">Enter an amount</string>
+    <string name="enter_a_valid_amount">Enter a valid amount</string>
+    <string name="amount_must_be_greater_than_zero">Amount must be greater than zero</string>
+    <string name="create_another_payout">Create Another Payout</string>
+    <string name="your_payout_of_has_been_processed_successfully">Your payout of %1$s has been processed successfully.</string>
+    <string name="payout_completed">Payout Completed</string>
+    <string name="unable_to_process_payout">Unable to Process Payout</string>
+    <string name="try_again">Try Again</string>
+    <string name="payout_unable_to_process">Unable to process payout.</string>
+    <string name="payout_service_unavailable">The payout service is temporarily unavailable. Please try again later.</string>
+    <string name="payout_insufficient_funds">Insufficient funds.</string>
+    <string name="payout_unknown_error">Something went wrong. Please try again.</string>
 </resources>
