@@ -51,6 +51,7 @@ dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.junit.ktx)
 
     // Lifecycle + ViewModel
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -64,6 +65,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.paging.common)
+    implementation(libs.core.ktx)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -116,6 +119,10 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.mockk)
+    testImplementation(libs.androidx.paging.testing)
+    testImplementation(libs.robolectric)
+    androidTestImplementation(libs.mockk.android)
 
-    implementation("com.google.android.material:material:1.14.0")
+    implementation(libs.material)
 }
