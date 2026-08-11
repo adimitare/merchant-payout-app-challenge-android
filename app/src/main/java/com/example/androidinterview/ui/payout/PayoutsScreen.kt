@@ -36,6 +36,7 @@ import com.example.androidinterview.domain.biometric.BiometricAuthenticator
 import com.example.androidinterview.domain.biometric.BiometricResult
 import com.example.androidinterview.domain.model.Currency
 import com.example.androidinterview.ui.payout.PayoutUiState.*
+import com.example.androidinterview.ui.security.ScreenshotProtection
 import com.example.androidinterview.util.formatMoney
 
 @Composable
@@ -43,6 +44,7 @@ fun PayoutScreen(
     viewModel: PayoutViewModel = hiltViewModel(),
     biometricAuthenticator: BiometricAuthenticator
 ) {
+    ScreenshotProtection()
     val context = LocalContext.current
     val activity = context as? FragmentActivity
     val state by viewModel.uiState.collectAsStateWithLifecycle()

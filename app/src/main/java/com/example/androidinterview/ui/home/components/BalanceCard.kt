@@ -56,7 +56,7 @@ private fun BalanceItem(
         )
         Text(
             text = formatMoney(amount, currency),
-            style = MaterialTheme.typography.headlineLarge
+            style = MaterialTheme.typography.headlineSmall
         )
     }
 }
