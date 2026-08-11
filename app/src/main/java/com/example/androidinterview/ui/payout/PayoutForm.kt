@@ -8,15 +8,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,107 +43,155 @@ fun PayoutForm(
         mutableStateOf(false)
     }
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = stringResource(R.string.send_payout),
-            style = MaterialTheme.typography.headlineLarge
+        TopAppBar(
+            title = {
+                Text(
+                    text = stringResource(
+                        R.string.send_payout
+                    )
+                )
+            }
         )
-        Spacer(
-            modifier = Modifier.height(48.dp)
-        )
-
-        Row(Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = state.data.amount,
-                onValueChange = onAmountChanged,
-                modifier = Modifier.weight(0.65f),
-                label = { Text(stringResource(R.string.amount_text_field)) },
-                singleLine = true,
-                isError = state.data.amountError != null,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal
-                ),
-                supportingText = {
-                    state.data.amountError?.let {
-                        Text(text = stringResource(it))
-                    }
-                }
-            )
-
-            Spacer(Modifier.width(8.dp))
-            ExposedDropdownMenuBox(
-                expanded = currencyExpanded,
-                onExpandedChange = { currencyExpanded = it },
-                modifier = Modifier.weight(0.35f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedTextField(
-                    value = state.data.currency.name,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.currency_text_field)) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    value = state.data.amount,
+                    onValueChange = onAmountChanged,
+                    modifier = Modifier.weight(0.65f),
+                    label = {
+                        Text(
+                            stringResource(
+                                R.string.amount_text_field
+                            )
+                        )
+                    },
+                    singleLine = true,
+                    isError = state.data.amountError != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal
+                    ),
+                    supportingText = {
+                        state.data.amountError?.let {
+                            Text(
+                                text = stringResource(it)
+                            )
+                        }
+                    }
                 )
-                ExposedDropdownMenu(
+                Spacer(
+                    modifier = Modifier.width(8.dp)
+                )
+                ExposedDropdownMenuBox(
                     expanded = currencyExpanded,
-                    onDismissRequest = { currencyExpanded = false },
+                    onExpandedChange = {
+                        currencyExpanded = it
+                    },
+                    modifier = Modifier.weight(0.35f)
                 ) {
-                    Currency.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option.name) },
-                            onClick = {
-                                onCurrencyChanged(option)
-                                currencyExpanded = false
-                            },
+                    OutlinedTextField(
+                        value = state.data.currency.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = {
+                            Text(
+                                stringResource(
+                                    R.string.currency_text_field
+                                )
+                            )
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = currencyExpanded
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(
+                                ExposedDropdownMenuAnchorType
+                                    .PrimaryNotEditable
+                            )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = currencyExpanded,
+                        onDismissRequest = {
+                            currencyExpanded = false
+                        }
+                    ) {
+                        Currency.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(option.name)
+                                },
+                                onClick = {
+                                    onCurrencyChanged(option)
+                                    currencyExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
+            OutlinedTextField(
+                value = state.data.iban,
+                onValueChange = onIbanChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    Text(
+                        stringResource(
+                            R.string.iban_text_field
+                        )
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Ascii,
+                    capitalization = KeyboardCapitalization.Characters
+                ),
+                singleLine = true,
+                isError = state.data.ibanError != null,
+                supportingText = {
+                    state.data.ibanError?.let {
+                        Text(
+                            text = stringResource(it)
                         )
                     }
                 }
+            )
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+            Text(
+                text = stringResource(
+                    R.string.enter_the_destination_bank_account_iban
+                )
+            )
+            Spacer(
+                modifier = Modifier.height(64.dp)
+            )
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = state.data.amount.isNotBlank() &&
+                        state.data.iban.isNotBlank() &&
+                        state.data.amountError == null &&
+                        state.data.ibanError == null
+            ) {
+                Text(
+                    stringResource(
+                        R.string.confirm_text_button_payout_form
+                    )
+                )
             }
-        }
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
-        OutlinedTextField(
-            value = state.data.iban,
-            onValueChange = onIbanChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.iban_text_field)) },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Ascii,
-                capitalization = KeyboardCapitalization.Characters
-            ),
-            singleLine = true,
-            isError = state.data.ibanError != null,
-            supportingText = {
-                state.data.ibanError?.let {
-                    Text(text = stringResource(it))
-                }
-            }
-        )
-        Spacer(
-            modifier = Modifier.height(4.dp)
-        )
-        Text(
-            text = stringResource(R.string.enter_the_destination_bank_account_iban),
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(
-            modifier = Modifier.height(64.dp)
-        )
-        Button(
-            onClick = onConfirm,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = state.data.amount.isNotBlank() &&
-                    state.data.iban.isNotBlank() &&
-                    state.data.amountError == null &&
-                    state.data.ibanError == null
-        ) {
-            Text(stringResource(R.string.confirm_text_button_payout_form))
         }
     }
 }
