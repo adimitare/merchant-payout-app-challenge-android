@@ -88,7 +88,6 @@ private fun HomeContent(
                 RecentActivityItem(
                     activityItem = activity
                 )
-
                 HorizontalDivider()
             }
             Spacer(modifier = Modifier.height(16.dp))

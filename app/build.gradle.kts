@@ -40,7 +40,11 @@ android {
     buildFeatures {
         compose = true
     }
-
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     composeCompiler {
         reportsDestination = layout.buildDirectory.dir("compose_reports")
         metricsDestination = layout.buildDirectory.dir("compose_metrics")
@@ -66,6 +70,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.paging.common)
+    implementation(libs.androidx.ui.test.junit4)
     implementation(libs.core.ktx)
 
     // Coroutines
@@ -123,6 +128,8 @@ dependencies {
     testImplementation(libs.androidx.paging.testing)
     testImplementation(libs.robolectric)
     androidTestImplementation(libs.mockk.android)
+
+    testImplementation(libs.androidx.core.testing)
 
     implementation(libs.material)
 }
