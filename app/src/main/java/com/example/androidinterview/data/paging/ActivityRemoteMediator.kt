@@ -1,6 +1,5 @@
 package com.example.androidinterview.data.paging
 
-import android.util.Log
 import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
@@ -19,44 +18,63 @@ import java.io.IOException
 @OptIn(ExperimentalPagingApi::class)
 class ActivityRemoteMediator(
     private val api: MerchantApi,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val appendGate: TransactionAppendGate
 ) : RemoteMediator<Int, ActivityEntity>() {
 
     override suspend fun load(
         loadType: LoadType,
         state: PagingState<Int, ActivityEntity>
     ): MediatorResult = withContext(Dispatchers.IO) {
-
         val activityDao = database.activityDao()
         val remoteKeysDao = database.activityRemoteKeysDao()
 
         try {
-            val cursor = when (loadType) {
-
-                LoadType.REFRESH -> {
-                    null
-                }
-
+            when (loadType) {
                 LoadType.PREPEND -> {
                     return@withContext MediatorResult.Success(
                         endOfPaginationReached = true
                     )
                 }
 
+                LoadType.REFRESH -> {
+                    appendGate.reset()
+                }
+
+                LoadType.APPEND -> {
+                    if (!appendGate.isAppendAllowed()) {
+                        return@withContext MediatorResult.Error(
+                            AppendNotAllowedException()
+                        )
+                    }
+
+                    val lastItem = state.lastItemOrNull()
+                    if (lastItem == null) {
+                        return@withContext MediatorResult.Error(
+                            AppendNotAllowedException()
+                        )
+                    }
+                }
+            }
+
+            val cursor = when (loadType) {
+                LoadType.REFRESH -> null
+
                 LoadType.APPEND -> {
                     val lastItem = state.lastItemOrNull()
-                        ?: return@withContext MediatorResult.Success(
-                            endOfPaginationReached = true
+                        ?: return@withContext MediatorResult.Error(
+                            AppendNotAllowedException()
                         )
 
-                    val remoteKey =
-                        remoteKeysDao.remoteKeys(lastItem.id)
+                    val remoteKey = remoteKeysDao.remoteKeys(lastItem.id)
 
                     remoteKey?.nextCursor
                         ?: return@withContext MediatorResult.Success(
                             endOfPaginationReached = true
                         )
                 }
+
+                LoadType.PREPEND -> error("PREPEND is handled above")
             }
 
             val response = api.getActivityResponse(
@@ -69,14 +87,12 @@ class ActivityRemoteMediator(
             }
 
             database.withTransaction {
-
                 if (loadType == LoadType.REFRESH) {
                     remoteKeysDao.clearRemoteKeys()
                     activityDao.clearAll()
                 }
 
                 if (entities.isNotEmpty()) {
-
                     val keys = entities.map { entity ->
                         ActivityRemoteKeysEntity(
                             activityId = entity.id,
@@ -101,9 +117,5 @@ class ActivityRemoteMediator(
         } catch (e: Exception) {
             MediatorResult.Error(e)
         }
-    }
-
-    private companion object {
-        const val TAG = "ActivityRemoteMediator"
     }
 }

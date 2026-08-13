@@ -15,7 +15,8 @@ import javax.inject.Inject
 class ActivityPagerFactory @Inject constructor(
     private val api: MerchantApi,
     private val database: AppDatabase,
-    private val activityDao: ActivityDao
+    private val activityDao: ActivityDao,
+    private val appendGate: TransactionAppendGate
 ) {
 
     fun create(): Flow<PagingData<ActivityEntity>> {
@@ -23,11 +24,13 @@ class ActivityPagerFactory @Inject constructor(
             config = PagingConfig(
                 pageSize = PAGE_SIZE,
                 initialLoadSize = PAGE_SIZE,
+                prefetchDistance = 1,
                 enablePlaceholders = false
             ),
             remoteMediator = ActivityRemoteMediator(
                 api = api,
-                database = database
+                database = database,
+                appendGate = appendGate
             ),
             pagingSourceFactory = {
                 activityDao.pagingSource()

@@ -1,6 +1,7 @@
 package com.example.androidinterview.ui.transactions
 
 import androidx.paging.PagingData
+import com.example.androidinterview.data.paging.TransactionAppendGate
 import com.example.androidinterview.domain.usecase.GetTransactionsUseCase
 import io.mockk.every
 import io.mockk.mockk
@@ -28,7 +29,8 @@ class TransactionViewModelTest {
             PagingData.empty<TransactionListItem>()
         )
         viewModel = TransactionViewModel(
-            getTransactionsUseCase = getTransactionsUseCase
+            getTransactionsUseCase = getTransactionsUseCase,
+            appendGate = TransactionAppendGate()
         )
     }
 
