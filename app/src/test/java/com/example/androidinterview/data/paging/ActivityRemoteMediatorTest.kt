@@ -257,23 +257,18 @@ class ActivityRemoteMediatorTest {
 
     @OptIn(ExperimentalPagingApi::class)
     @Test
-    fun `APPEND returns end of pagination when there is no last item`() =
+    fun `APPEND defers when there is no last item`() =
         runTest {
-            // When
+            appendGate.markUserScrolled()
+
             val result = mediator.load(
                 LoadType.APPEND,
                 pagingState()
             )
 
-            // Then
-            assertTrue(
-                result is RemoteMediator.MediatorResult.Success
-            )
-
-            val success =
-                result as RemoteMediator.MediatorResult.Success
-
-            assertTrue(success.endOfPaginationReached)
+            assertTrue(result is RemoteMediator.MediatorResult.Error)
+            val error = result as RemoteMediator.MediatorResult.Error
+            assertTrue(error.throwable is AppendNotAllowedException)
 
             coVerify(exactly = 0) {
                 api.getActivityResponse(
@@ -293,6 +288,8 @@ class ActivityRemoteMediatorTest {
             val state = pagingState(
                 items = listOf(lastItem)
             )
+
+            appendGate.markUserScrolled()
 
             // When
             val result = mediator.load(
@@ -337,6 +334,8 @@ class ActivityRemoteMediatorTest {
             val state = pagingState(
                 items = listOf(lastItem)
             )
+
+            appendGate.markUserScrolled()
 
             // When
             val result = mediator.load(
@@ -389,6 +388,8 @@ class ActivityRemoteMediatorTest {
             )
 
             assertTrue(result is RemoteMediator.MediatorResult.Error)
+            val error = result as RemoteMediator.MediatorResult.Error
+            assertTrue(error.throwable is AppendNotAllowedException)
             coVerify(exactly = 0) {
                 api.getActivityResponse(any(), any())
             }
@@ -405,6 +406,8 @@ class ActivityRemoteMediatorTest {
         )
 
         assertTrue(result is RemoteMediator.MediatorResult.Error)
+        val error = result as RemoteMediator.MediatorResult.Error
+        assertTrue(error.throwable is AppendNotAllowedException)
         coVerify(exactly = 0) {
             api.getActivityResponse(any(), any())
         }
