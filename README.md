@@ -334,13 +334,9 @@ Your solution will be evaluated based on:
 -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Merchant Payout App
-
 A modern Android merchant dashboard and payout application built with **Kotlin**, **Jetpack Compose**, **Coroutines**, **Flow**, **Paging**, **Room**, **Retrofit/OkHttp**, **Hilt**, and **JUnit-based testing**.
-
 ---
-
 ## Table of Contents
-
 - [Overview](#overview)
 - [Challenge Requirements](#challenge-requirements)
   - [Merchant Home](#merchant-home)
@@ -378,15 +374,10 @@ A modern Android merchant dashboard and payout application built with **Kotlin**
 - [Testing the Main Flows](#testing-the-main-flows)
 - [Implementation Notes](#implementation-notes)
 - [Conclusion](#conclusion)
-
 ---
-
-# Overview
-
+## Overview
 The **Merchant Payout App** implements the functionality described in the Merchant Payout Challenge.
-
-## Main Application Areas
-
+### Main Application Areas
 - Merchant Home
 - Transaction History
 - Payout Form
@@ -396,15 +387,11 @@ The **Merchant Payout App** implements the functionality described in the Mercha
 - Device Identity
 - Biometric Authentication
 - Screenshot Protection
-
 The application follows a layered architecture with a clear separation between:
-
 - **UI**
 - **Domain**
 - **Data**
-
 The application is built using:
-
 - Kotlin
 - Jetpack Compose
 - Material 3
@@ -418,30 +405,20 @@ The application is built using:
 - JUnit
 - MockK
 - `kotlinx-coroutines-test`
-
 ---
-
-# Challenge Requirements
-
+## Challenge Requirements
 The application implements the following challenge requirements.
-
-## Merchant Home
-
+### Merchant Home
 The Home screen displays:
-
 - Available merchant balance
 - Pending balance
 - Merchant currency
 - Recent activity
 - Loading state
 - Error state
-
 [View Home screenshot](docs/completed_screenshots/home.png)
-
-## Transactions
-
+### Transactions
 The Transactions screen provides:
-
 - Complete transaction history
 - Transaction date
 - Transaction description
@@ -451,15 +428,10 @@ The Transactions screen provides:
 - Loading state while additional pages are loaded
 - Pagination error state
 - Retry functionality
-
 [View Transactions screenshot](docs/completed_screenshots/transactions.png)
-
 [View Transactions Loading screenshot](docs/completed_screenshots/transactions_loading.png)
-
-## Payout
-
+### Payout
 The payout flow provides:
-
 - Amount input
 - Currency selection
 - IBAN input
@@ -469,57 +441,744 @@ The payout flow provides:
 - Successful payout state
 - Failed payout state
 - Insufficient funds handling
-
 [View Payout Form screenshot](docs/completed_screenshots/payout.png)
-
 [View Payout Confirmation screenshot](docs/completed_screenshots/payout_confirm.png)
-
 [View Payout Success screenshot](docs/completed_screenshots/payout_confirmed.png)
-
 [View Payout Failure screenshot](docs/completed_screenshots/payout_failed.png)
-
 [View Insufficient Funds screenshot](docs/completed_screenshots/payout_insufficient_funds.png)
-
-## Device Identity
-
+### Device Identity
 Payout requests include the required device identity retrieved from the provided device endpoint.
-
-## Biometric Authentication
-
+### Biometric Authentication
 Payouts above **£1,000.00** require biometric authentication before the payout request can be submitted.
-
 [View Biometric Authentication screenshot](docs/completed_screenshots/payout_biometric.png)
-
-## Screenshot Protection
-
+### Screenshot Protection
 The payout screen is protected from screenshots while sensitive payout information is displayed.
-
 ---
-
-# Implementation
-
-## Merchant Home Screen
-
+## Implementation
+### Merchant Home Screen
 The Home screen retrieves merchant information through the domain layer and displays the current financial state.
-
-### Displayed Information
-
+#### Displayed Information
 - Available balance
 - Pending balance
 - Currency
 - Recent activity
-
 The ViewModel exposes an explicit UI state:
-
 ```kotlin
 sealed interface HomeUiState {
     data object Loading : HomeUiState
-
     data class Success(
         val merchant: Merchant
     ) : HomeUiState
-
     data class Error(
         val message: String
     ) : HomeUiState
 }
+```
+The `HomeViewModel` starts loading the merchant when it is created and exposes the state through a `StateFlow`.
+The UI therefore reacts to:
+```text
+Loading
+   ↓
+Success
+```
+or:
+```text
+Loading
+   ↓
+Error
+```
+The actual data retrieval is delegated to `GetMerchantUseCase`.
+[View Home screenshot](docs/completed_screenshots/home.png)
+### Transaction List
+The transaction screen displays the merchant's complete activity history.
+Transactions are:
+- Grouped by date
+- Displayed in a `LazyColumn`
+- Loaded using cursor-based pagination
+- Persisted locally using Room
+- Synchronized using a Paging `RemoteMediator`
+#### Data Flow
+```text
+Remote API
+    ↓
+RemoteMediator
+    ↓
+Room Database
+    ↓
+PagingSource
+    ↓
+ViewModel
+    ↓
+Compose UI
+```
+The API uses forward cursor pagination.
+The initial request is made without a cursor:
+```text
+cursor = null
+```
+The API then returns the next cursor. Subsequent requests use the cursor from the previous response.
+#### Pagination Example
+**Request 1**
+```text
+cursor = null
+limit = 15
+```
+Response:
+```text
+items = act_001 ... act_015
+nextCursor = act_015
+hasMore = true
+```
+**Request 2**
+```text
+cursor = act_015
+limit = 15
+```
+Response:
+```text
+items = act_016 ... act_030
+nextCursor = null
+hasMore = false
+```
+The application treats the API as forward-only pagination.
+Therefore:
+- **REFRESH** is supported
+- **APPEND** is supported
+- **PREPEND** reaches the end of pagination
+[View Transactions screenshot](docs/completed_screenshots/transactions.png)
+[View Transactions Loading screenshot](docs/completed_screenshots/transactions_loading.png)
+### Payout Form and Confirmation
+The payout flow starts with a form containing:
+- Amount
+- Currency
+- IBAN
+The confirmation action is disabled until the required values are valid.
+#### Validation
+The form validates:
+- Amount
+- IBAN
+- Required fields
+#### Flow
+```text
+Payout Form
+     ↓
+Validation
+     ↓
+Confirmation
+     ↓
+Security Checks
+     ↓
+Payout API Request
+     ↓
+Success / Failure
+```
+The user is not sent directly from the form to the API request.
+A confirmation state is displayed first so the user can review the payout details before the transaction is submitted.
+[View Payout Form screenshot](docs/completed_screenshots/payout.png)
+[View Payout Confirmation screenshot](docs/completed_screenshots/payout_confirm.png)
+[View Payout Success screenshot](docs/completed_screenshots/payout_confirmed.png)
+[View Payout Failure screenshot](docs/completed_screenshots/payout_failed.png)
+[View Insufficient Funds screenshot](docs/completed_screenshots/payout_insufficient_funds.png)
+### Device Identity
+The payout API supports a device identifier.
+The application retrieves the device identity using the provided device endpoint and includes it when creating a payout.
+#### Flow
+```text
+GET /api/devices
+        ↓
+Device ID
+        ↓
+POST /api/payouts
+```
+The UI does not need to know how the device identifier is retrieved.
+This responsibility remains within the data and domain layers.
+### Biometric Authentication
+Biometric authentication is required for payouts above **£1,000.00**.
+The API represents monetary values using the smallest monetary unit.
+For GBP:
+```text
+£1.00      = 100 pence
+£1,000.00  = 100,000 pence
+```
+Therefore, the biometric requirement is applied when:
+```text
+amount > 100000
+```
+#### Flow
+For payouts up to and including £1,000:
+```text
+Amount <= £1,000
+        ↓
+Payout request
+```
+For payouts above £1,000:
+```text
+Amount > £1,000
+        ↓
+Biometric authentication
+        ↓
+    ┌───┴───┐
+    ↓       ↓
+ Success   Failure
+    ↓       ↓
+ Continue  Abort
+```
+A failed biometric authentication prevents the payout request from being submitted.
+If biometric authentication is unavailable or cannot be used, the payout is not executed.
+[View Biometric Authentication screenshot](docs/completed_screenshots/payout_biometric.png)
+### Screenshot Protection
+The payout screen contains sensitive financial information.
+Screenshot protection is enabled while the user is within the payout flow.
+The protection is scoped to the sensitive payout screen rather than being applied globally to the application.
+#### Intended Behaviour
+```text
+Home
+    ↓
+Screenshots allowed
+Payout
+    ↓
+Screenshots blocked
+Back to Home
+    ↓
+Screenshots allowed
+```
+---
+## Architecture
+The project follows a layered architecture:
+```text
+┌────────────────────────────────────┐
+│                 UI                 │
+│                                    │
+│  Compose Screens                   │
+│  ViewModels                        │
+│  UI State                          │
+└──────────────────┬─────────────────┘
+                   │
+                   ▼
+┌────────────────────────────────────┐
+│               DOMAIN               │
+│                                    │
+│  Use Cases                         │
+│  Domain Models                     │
+│  Business Rules                    │
+└──────────────────┬─────────────────┘
+                   │
+                   ▼
+┌────────────────────────────────────┐
+│                DATA                │
+│                                    │
+│  Repositories                      │
+│  Remote API                        │
+│  Room                              │
+│  Paging RemoteMediator             │
+│  Device Identity                   │
+└────────────────────────────────────┘
+```
+### UI Layer
+The UI layer is responsible for:
+- Rendering UI state
+- Handling user interaction
+- Displaying loading states
+- Displaying error states
+- Navigation
+- Compose-specific behaviour
+Examples include:
+- `ui/home/`
+- `ui/transactions/`
+- `ui/payout/`
+ViewModels expose state and delegate business operations to use cases.
+### Domain Layer
+The domain layer contains business operations and domain models.
+Examples include:
+- `GetMerchantUseCase`
+- `GetTransactionsUseCase`
+- `CreatePayoutUseCase`
+The domain layer is kept independent of Compose-specific implementation details.
+### Data Layer
+The data layer is responsible for:
+- Network communication
+- Persistence
+- Paging
+- Remote synchronization
+- Device identity
+- Mapping remote models to domain models
+Repositories provide the abstraction used by the domain layer.
+### Project Structure
+The project is organised around the three main layers:
+```text
+app/
+└── src/
+    ├── main/
+    │   ├── java/
+    │   │   └── com.example.androidinterview/
+    │   │       ├── data/
+    │   │       │   ├── local/
+    │   │       │   ├── remote/
+    │   │       │   └── repository/
+    │   │       │
+    │   │       ├── domain/
+    │   │       │   ├── model/
+    │   │       │   └── usecase/
+    │   │       │
+    │   │       └── ui/
+    │   │           ├── home/
+    │   │           ├── transactions/
+    │   │           └── payout/
+    │   │
+    │   └── res/
+    │
+    └── test/
+        └── java/
+            └── com.example.androidinterview/
+                ├── ui/
+                │   ├── home/
+                │   ├── transactions/
+                │   └── payout/
+                │
+                └── domain/
+```
+Completed screenshots are stored in:
+```text
+docs/
+└── completed_screenshots/
+    ├── home.png
+    ├── transactions.png
+    ├── transactions_loading.png
+    ├── payout.png
+    ├── payout_confirm.png
+    ├── payout_confirmed.png
+    ├── payout_failed.png
+    ├── payout_insufficient_funds.png
+    └── payout_biometric.png
+```
+---
+## Tech Stack
+| Category | Technologies |
+| --- | --- |
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3 |
+| Architecture | MVVM, Layered Architecture |
+| Patterns | Repository, Use Case |
+| Android Components | ViewModel, StateFlow |
+| Asynchronous Programming | Coroutines, Flow |
+| Pagination | AndroidX Paging |
+| Local Database | Room |
+| Networking | Retrofit, OkHttp |
+| Mock Backend | MockWebServer |
+| Dependency Injection | Hilt |
+| Testing | JUnit, MockK, kotlinx-coroutines-test |
+---
+## State Management
+The UI uses explicit state representations instead of relying on multiple independent Boolean values.
+For example, the Home screen uses:
+```kotlin
+sealed interface HomeUiState {
+    data object Loading : HomeUiState
+    data class Success(
+        val merchant: Merchant
+    ) : HomeUiState
+    data class Error(
+        val message: String
+    ) : HomeUiState
+}
+```
+This makes the possible UI states explicit.
+The general pattern is:
+```text
+Loading
+Success
+Error
+```
+The same principle is applied to the payout flow and transaction loading states.
+---
+## Data Layer
+### Remote API
+The application communicates with the provided MockWebServer API.
+#### Available Endpoints
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/merchant` | GET | Retrieve merchant information |
+| `/api/merchant/activity` | GET | Retrieve paginated activity |
+| `/api/payouts` | POST | Create a payout |
+| `/api/payouts/:id` | GET | Retrieve payout status |
+| `/api/devices` | GET | Retrieve device identity |
+The MockWebServer is used as the backend during development and testing.
+### Room
+Room is used as the local data source for the transaction list.
+The transaction flow is:
+```text
+API
+ ↓
+RemoteMediator
+ ↓
+Room
+ ↓
+PagingSource
+ ↓
+UI
+```
+This allows the Paging UI to consume database-backed data while the RemoteMediator synchronises remote pages.
+### Paging
+The transaction API uses cursor-based pagination rather than page-number pagination.
+**Request**
+The pagination request contains:
+- `cursor`
+- `limit`
+**Response**
+The response contains:
+- `items`
+- `next_cursor`
+- `has_more`
+The RemoteMediator stores the relevant cursor information and uses the last loaded item to determine the cursor for the next request.
+For the forward-only API:
+```text
+REFRESH
+   ↓
+APPEND
+   ↓
+APPEND
+   ↓
+endOfPaginationReached
+```
+**PREPEND** is not required because the API does not provide backwards pagination.
+---
+## Payout Flow
+The payout flow is implemented as a state-driven sequence.
+```text
+┌───────────────┐
+│ Payout Form   │
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│ Validation    │
+└───────┬───────┘
+        │
+        ▼
+┌───────────────┐
+│ Confirmation  │
+└───────┬───────┘
+        │
+        ▼
+┌───────────────────┐
+│ Security Checks   │
+│                   │
+│ Device ID         │
+│ Biometric if      │
+│ required          │
+└────────┬──────────┘
+         │
+         ▼
+┌───────────────────┐
+│ POST /api/payouts │
+└────────┬──────────┘
+         │
+      ┌──┴───┐
+      ▼      ▼
+   Success  Failure
+```
+This ensures that validation and security checks happen before the payout request is submitted.
+---
+## Validation and Error Handling
+The application handles validation and backend errors separately.
+### Form Validation
+The payout form validates:
+- Amount is present
+- Amount is valid
+- IBAN is present
+- IBAN is valid
+The confirm button is enabled only when:
+```text
+amount is not blank
+AND
+IBAN is not blank
+AND
+amountError == null
+AND
+ibanError == null
+```
+### Network Errors
+Network failures are represented as an error state and are not allowed to crash the application.
+The UI displays an appropriate failure state to the user.
+### HTTP Errors
+The payout flow handles server responses such as:
+- `400 Bad Request`
+- `503 Service Unavailable`
+The challenge's MockWebServer provides deterministic values for testing these scenarios.
+### Insufficient Funds
+The insufficient funds scenario is represented separately from a generic server error.
+The challenge provides a deterministic payout amount that triggers this response:
+```text
+88888
+```
+The application handles this as an insufficient funds state.
+[View Insufficient Funds screenshot](docs/completed_screenshots/payout_insufficient_funds.png)
+### Service Unavailable
+The challenge provides another deterministic payout amount for testing the service unavailable response:
+```text
+99999
+```
+This produces:
+```text
+503 Service Unavailable
+```
+The application displays the appropriate failure state.
+[View Payout Failed screenshot](docs/completed_screenshots/payout_failed.png)
+---
+## Testing
+Unit tests are located under:
+```text
+app/src/test/
+```
+The tests focus on ViewModel and business behaviour and do not require an Android emulator.
+**Test Stack**
+- JUnit
+- MockK
+- `kotlinx-coroutines-test`
+### HomeViewModel Tests
+The `HomeViewModelTest` covers the following behaviours.
+#### Initial State
+The ViewModel starts in:
+```text
+Loading
+```
+#### Successful Loading
+When `GetMerchantUseCase` succeeds:
+```text
+Loading
+    ↓
+Success(merchant)
+```
+#### Error Handling
+When the use case throws an exception:
+```text
+Loading
+    ↓
+Error(message)
+```
+#### Unknown Error
+When an exception does not contain a message:
+```text
+Error("Unknown error")
+```
+#### Reloading
+The ViewModel can load merchant data again.
+The test verifies that the use case is invoked again and that the resulting state is updated.
+#### Example ViewModel Test
+```kotlin
+@Test
+fun `loadMerchant emits Success when use case succeeds`() = runTest {
+    val merchant = merchant()
+    coEvery {
+        getMerchantUseCase()
+    } returns merchant
+    val viewModel = HomeViewModel(
+        getMerchantUseCase = getMerchantUseCase
+    )
+    advanceUntilIdle()
+    assertEquals(
+        HomeUiState.Success(merchant),
+        viewModel.uiState.value
+    )
+    coVerify(exactly = 1) {
+        getMerchantUseCase()
+    }
+}
+```
+The test uses `advanceUntilIdle()` to allow the coroutine launched in `viewModelScope` to complete before asserting the final state.
+### Payout Tests
+The payout logic can be tested independently from the Compose UI.
+Important scenarios include:
+- Empty amount
+- Invalid amount
+- Valid amount
+- Empty IBAN
+- Invalid IBAN
+- Valid IBAN
+- Currency selection
+- Payout confirmation
+- Successful payout
+- Insufficient funds
+- Server unavailable
+- Network failure
+- Biometric requirement for amounts above £1,000
+- Failed biometric authentication
+The focus is on verifying state transitions and business rules rather than testing Compose implementation details in JVM unit tests.
+### Test Location
+All JVM unit tests are kept under:
+```text
+src/test/
+```
+rather than:
+```text
+src/androidTest/
+```
+This keeps the business and ViewModel tests fast and independent from the Android emulator.
+---
+## Completed Screenshots
+The completed implementation screenshots are stored in:
+```text
+docs/completed_screenshots/
+```
+### Screenshot Gallery
+| Screen | Screenshot |
+| --- | --- |
+| Home | [Open screenshot](docs/completed_screenshots/home.png) |
+| Transactions | [Open screenshot](docs/completed_screenshots/transactions.png) |
+| Transactions Loading | [Open screenshot](docs/completed_screenshots/transactions_loading.png) |
+| Payout Form | [Open screenshot](docs/completed_screenshots/payout.png) |
+| Payout Confirmation | [Open screenshot](docs/completed_screenshots/payout_confirm.png) |
+| Payout Confirmed | [Open screenshot](docs/completed_screenshots/payout_confirmed.png) |
+| Payout Failed | [Open screenshot](docs/completed_screenshots/payout_failed.png) |
+| Insufficient Funds | [Open screenshot](docs/completed_screenshots/payout_insufficient_funds.png) |
+| Biometric Authentication | [Open screenshot](docs/completed_screenshots/payout_biometric.png) |
+These screenshots document the implemented application states.
+### Home
+The Home screen displays:
+- Merchant balance
+- Pending balance
+- Currency
+- Recent activity
+[Open Home screenshot](docs/completed_screenshots/home.png)
+### Transactions
+The Transactions screen displays the paginated transaction history grouped by date.
+[Open Transactions screenshot](docs/completed_screenshots/transactions.png)
+### Transactions Loading
+This screenshot demonstrates the loading state while additional transaction data is being requested.
+[Open Transactions Loading screenshot](docs/completed_screenshots/transactions_loading.png)
+### Payout Form
+The payout form allows the user to:
+- Enter the payout amount
+- Choose a currency
+- Provide the destination IBAN
+[Open Payout Form screenshot](docs/completed_screenshots/payout.png)
+### Payout Confirmation
+The confirmation screen allows the user to review the payout information before the payout is submitted.
+[Open Payout Confirmation screenshot](docs/completed_screenshots/payout_confirm.png)
+### Payout Confirmed
+This screen represents a successfully completed payout.
+[Open Payout Confirmed screenshot](docs/completed_screenshots/payout_confirmed.png)
+### Payout Failed
+This screen represents a payout failure caused by a server or network error.
+[Open Payout Failed screenshot](docs/completed_screenshots/payout_failed.png)
+### Insufficient Funds
+This screen represents the insufficient funds scenario.
+[Open Insufficient Funds screenshot](docs/completed_screenshots/payout_insufficient_funds.png)
+### Biometric Authentication
+This screen demonstrates the biometric authentication step required for high-value payouts.
+[Open Biometric Authentication screenshot](docs/completed_screenshots/payout_biometric.png)
+---
+## Running the Project
+### Requirements
+The project requires:
+- Android Studio
+- Android SDK
+- A configured Android emulator or physical Android device
+- A compatible JDK
+### Build
+Open the project in Android Studio and allow Gradle to synchronize.
+The application can then be run using the standard Android Studio Run configuration.
+### Run
+1. Open the project in Android Studio.
+2. Synchronize the Gradle project.
+3. Start an Android emulator or connect a physical device.
+4. Run the application.
+5. Navigate through the Home, Transactions, and Payout flows.
+The provided MockWebServer starts with the application.
+---
+## Testing the Main Flows
+### Home
+Verify that:
+- The merchant balance is displayed.
+- The pending balance is displayed.
+- The currency is displayed.
+- Recent activity is displayed.
+- Loading state is displayed while data is loading.
+- Error state is displayed if loading fails.
+### Transactions
+Verify that:
+- The first page of transactions loads.
+- Transactions are displayed in the correct order.
+- Transactions are grouped by date.
+- Scrolling triggers additional page loading.
+- A loading indicator appears while the next page is loading.
+- Pagination errors expose a retry action.
+- No additional pages are requested after the API reports that there is no more data.
+### Payout
+Verify that:
+- An empty amount cannot be confirmed.
+- An invalid amount displays an error.
+- An empty IBAN cannot be confirmed.
+- An invalid IBAN displays an error.
+- A valid payout proceeds to confirmation.
+- A confirmed payout is submitted to the API.
+- A successful request displays the completed state.
+- A failed request displays the failed state.
+- The insufficient funds scenario is handled.
+- The service unavailable scenario is handled.
+- High-value payouts require biometric authentication.
+- Failed biometric authentication prevents the payout request.
+---
+## Implementation Notes
+### Explicit UI State
+The application uses explicit state objects rather than exposing implementation details directly to Compose.
+This makes state transitions easier to reason about and easier to test.
+### ViewModel Responsibility
+ViewModels coordinate UI actions with the domain layer.
+For example:
+```text
+Compose UI
+    ↓
+ViewModel
+    ↓
+Use Case
+```
+The ViewModel does not directly perform network calls.
+### Repository Responsibility
+Repositories abstract data sources from the domain layer.
+The repository determines whether data comes from:
+- Remote API
+- Room
+- Other data providers
+This keeps the domain layer independent from implementation details.
+### Paging Responsibility
+The transaction list uses Paging with Room and a RemoteMediator.
+The RemoteMediator is responsible for:
+- Loading remote pages
+- Handling cursors
+- Updating remote keys
+- Inserting entities into Room
+- Determining when pagination has completed
+The Compose UI only consumes the resulting `PagingData`.
+### Monetary Representation
+Monetary amounts are represented using the smallest currency denomination expected by the API.
+For example:
+```text
+100000 = £1,000.00
+```
+This representation is used consistently when evaluating the biometric threshold and submitting payout requests.
+### Security
+Security-related behaviour is kept within the payout flow.
+The implementation includes:
+- Device identity
+- Biometric authentication for high-value payouts
+- Screenshot protection
+- Validation before payout submission
+---
+## Conclusion
+The Merchant Payout App implements the requested merchant dashboard and payout functionality using a modern Android architecture.
+The implementation provides:
+- A Compose-based merchant dashboard
+- Merchant balance and recent activity
+- Cursor-based transaction pagination
+- Room-backed Paging
+- Payout form validation
+- Payout confirmation
+- Payout success and failure states
+- Insufficient funds handling
+- Device identity support
+- Biometric authentication for payouts above £1,000
+- Screenshot protection for sensitive payout screens
+- Unit tests for ViewModel and business behaviour
+- Completed screenshots documenting the implemented UI states
+The application separates UI, domain, and data responsibilities while keeping business rules independently testable and the UI driven by explicit state.
