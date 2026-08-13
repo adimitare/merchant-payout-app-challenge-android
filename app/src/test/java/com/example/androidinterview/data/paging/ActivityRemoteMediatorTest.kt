@@ -32,6 +32,7 @@ import java.io.IOException
 class ActivityRemoteMediatorTest {
     private lateinit var database: AppDatabase
     private lateinit var api: MerchantApi
+    private lateinit var appendGate: TransactionAppendGate
     private lateinit var mediator: ActivityRemoteMediator
 
     @Before
@@ -44,10 +45,12 @@ class ActivityRemoteMediatorTest {
             .build()
 
         api = mockk()
+        appendGate = TransactionAppendGate()
 
         mediator = ActivityRemoteMediator(
             api = api,
-            database = database
+            database = database,
+            appendGate = appendGate
         )
     }
 
@@ -361,6 +364,54 @@ class ActivityRemoteMediatorTest {
 
     @OptIn(ExperimentalPagingApi::class)
     @Test
+    fun `APPEND skips network load until user scrolls near end`() =
+        runTest {
+            val items = (1..15).map { index ->
+                activityEntity("item-$index")
+            }
+
+            database.activityDao().insertAll(items)
+            database.activityRemoteKeysDao().insertAll(
+                listOf(
+                    remoteKey(
+                        activityId = "item-15",
+                        nextCursor = "cursor-2"
+                    )
+                )
+            )
+
+            val result = mediator.load(
+                LoadType.APPEND,
+                pagingState(
+                    items = items,
+                    anchorPosition = 0
+                )
+            )
+
+            assertTrue(result is RemoteMediator.MediatorResult.Error)
+            coVerify(exactly = 0) {
+                api.getActivityResponse(any(), any())
+            }
+        }
+
+    @OptIn(ExperimentalPagingApi::class)
+    @Test
+    fun `APPEND defers when paging state has no items yet`() = runTest {
+        appendGate.markUserScrolled()
+
+        val result = mediator.load(
+            LoadType.APPEND,
+            pagingState()
+        )
+
+        assertTrue(result is RemoteMediator.MediatorResult.Error)
+        coVerify(exactly = 0) {
+            api.getActivityResponse(any(), any())
+        }
+    }
+
+    @OptIn(ExperimentalPagingApi::class)
+    @Test
     fun `APPEND loads next page using remote key cursor`() =
         runTest {
             // Given
@@ -394,6 +445,8 @@ class ActivityRemoteMediatorTest {
                     limit = 20
                 )
             } returns response
+
+            appendGate.markUserScrolled()
 
             // When
             val result = mediator.load(
@@ -475,6 +528,8 @@ class ActivityRemoteMediatorTest {
                 )
             } returns response
 
+            appendGate.markUserScrolled()
+
             // When
             val result = mediator.load(
                 LoadType.APPEND,
@@ -526,6 +581,8 @@ class ActivityRemoteMediatorTest {
                     limit = 20
                 )
             } returns response
+
+            appendGate.markUserScrolled()
 
             // When
             val result = mediator.load(
@@ -617,7 +674,8 @@ class ActivityRemoteMediatorTest {
         }
 
     private fun pagingState(
-        items: List<ActivityEntity> = emptyList()
+        items: List<ActivityEntity> = emptyList(),
+        anchorPosition: Int? = items.lastIndex.takeIf { items.isNotEmpty() }
     ): PagingState<Int, ActivityEntity> {
         return PagingState(
             pages = listOf(
@@ -627,9 +685,10 @@ class ActivityRemoteMediatorTest {
                     nextKey = null
                 )
             ),
-            anchorPosition = null,
+            anchorPosition = anchorPosition,
             config = PagingConfig(
-                pageSize = 20
+                pageSize = 20,
+                prefetchDistance = 1
             ),
             leadingPlaceholderCount = 0
         )

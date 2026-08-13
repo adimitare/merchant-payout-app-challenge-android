@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,12 +29,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.example.androidinterview.data.paging.AppendNotAllowedException
 import com.example.androidinterview.R
 import com.example.androidinterview.domain.model.ActivityItem
 import com.example.androidinterview.domain.usecase.TransactionDateLabel
 import com.example.androidinterview.ui.common.AppStatusBar
 import com.example.androidinterview.ui.common.ErrorContent
-import com.example.androidinterview.ui.common.LoadingContent
 import com.example.androidinterview.util.formatDate
 import com.example.androidinterview.util.formatMoney
 import java.time.format.DateTimeFormatter
@@ -51,32 +54,11 @@ fun TransactionListScreen(
             onClose = onClose
         )
 
-        when {
-            transactions.loadState.refresh is LoadState.Loading -> {
-                LoadingContent()
-            }
-
-            transactions.loadState.refresh is LoadState.Error -> {
-                val error =
-                    transactions.loadState.refresh as LoadState.Error
-
-                ErrorContent(
-                    message = error.error.message
-                        ?: "Unable to load transactions",
-                    retry = transactions::retry
-                )
-            }
-
-            transactions.itemCount == 0 -> {
-                EmptyTransactions()
-            }
-
-            else -> {
-                TransactionList(
-                    items = transactions
-                )
-            }
-        }
+        TransactionList(
+            items = transactions,
+            onScrolledNearEnd = viewModel::onScrolledNearEnd,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -92,67 +74,134 @@ private fun TransactionHeader(
 
 @Composable
 private fun TransactionList(
-    items: LazyPagingItems<TransactionListItem>
+    items: LazyPagingItems<TransactionListItem>,
+    onScrolledNearEnd: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(
-            count = items.itemCount,
-            key = { index ->
-                when (val item = items[index]) {
-                    is TransactionListItem.Header ->
-                        "header_${item.date}"
+    val listState = rememberLazyListState()
 
-                    is TransactionListItem.Transaction ->
-                        item.activity.id
+    LaunchedEffect(listState, items.itemCount) {
+        snapshotFlow {
+            val firstVisibleIndex = listState.firstVisibleItemIndex
+            val lastVisibleIndex =
+                listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            Triple(firstVisibleIndex, lastVisibleIndex, items.itemCount)
+        }.collect { (firstVisibleIndex, lastVisibleIndex, itemCount) ->
+            val userScrolledNearEnd = firstVisibleIndex > 0 &&
+                lastVisibleIndex != null &&
+                itemCount > 0 &&
+                lastVisibleIndex >= itemCount - 3
 
-                    null -> index
-                }
+            if (!userScrolledNearEnd) {
+                return@collect
             }
-        ) { index ->
-            when (val item = items[index]) {
-                is TransactionListItem.Header -> {
-                    TransactionDateHeader(
-                        date = item.date
-                    )
-                }
 
-                is TransactionListItem.Transaction -> {
-                    TransactionItem(
-                        activity = item.activity
-                    )
-                }
+            onScrolledNearEnd()
 
-                null -> Unit
+            val appendState = items.loadState.append
+            if (appendState is LoadState.Error &&
+                appendState.error is AppendNotAllowedException
+            ) {
+                items.retry()
+            } else if (appendState is LoadState.NotLoading &&
+                !appendState.endOfPaginationReached
+            ) {
+                items.retry()
             }
         }
-        when (val appendState = items.loadState.append) {
-            is LoadState.Loading -> {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(
+                count = items.itemCount,
+                key = { index ->
+                    when (val item = items[index]) {
+                        is TransactionListItem.Header ->
+                            "header_${item.date}"
+
+                        is TransactionListItem.Transaction ->
+                            item.activity.id
+
+                        null -> index
                     }
+                }
+            ) { index ->
+                when (val item = items[index]) {
+                    is TransactionListItem.Header -> {
+                        TransactionDateHeader(
+                            date = item.date
+                        )
+                    }
+
+                    is TransactionListItem.Transaction -> {
+                        TransactionItem(
+                            activity = item.activity
+                        )
+                    }
+
+                    null -> Unit
+                }
+            }
+            when (val appendState = items.loadState.append) {
+                is LoadState.Loading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
+
+                is LoadState.Error -> {
+                    if (appendState.error !is AppendNotAllowedException) {
+                        item {
+                            TextButton(
+                                onClick = items::retry,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+
+                is LoadState.NotLoading -> Unit
+            }
+        }
+
+        when {
+            items.loadState.refresh is LoadState.Loading && items.itemCount == 0 -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            items.loadState.refresh is LoadState.Error && items.itemCount == 0 -> {
+                val error = items.loadState.refresh as LoadState.Error
+                Box(modifier = Modifier.fillMaxSize()) {
+                    ErrorContent(
+                        message = error.error.message
+                            ?: "Unable to load transactions",
+                        retry = items::retry
+                    )
                 }
             }
 
-            is LoadState.Error -> {
-                item {
-                    TextButton(
-                        onClick = items::retry,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Retry")
-                    }
-                }
+            items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0 -> {
+                EmptyTransactions(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
-
-            is LoadState.NotLoading -> Unit
         }
     }
 }
@@ -216,16 +265,14 @@ private fun TransactionItem(
 }
 
 @Composable
-private fun EmptyTransactions() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No transactions yet",
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
+private fun EmptyTransactions(
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = "No transactions yet",
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = modifier
+    )
 }
 
 @Composable
